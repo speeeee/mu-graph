@@ -1,1 +1,1 @@
-[line (50 -50) [dup [+ 1 [save 0 [dup [+ 1 [load 0] 0
+line ( 50 -50 ) [ dup [ + 1 [ save 0 [ dup [ + 1 [ load 0 ] 0
