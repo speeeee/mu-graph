@@ -16,10 +16,13 @@
 
 typedef struct { union { int64_t i; double f; } x; unsigned short type; } Num;
 typedef struct { char *name; int *dcs; } Fun;
-typedef struct { int dc; int *dims; double *data; } NArr;
+typedef struct { int dc; int *dims; Num *data; } NArr;
 typedef struct { int dc; int *dims; Fun *data; } FArr;
 
 typedef struct { Fun f; Num n; char op; char type; } Item;
+
+int64_t pi_mul(int *dims,int dc) { int64_t q = 1; for(int i=0;i<dc;i++) { q*=dims[i]; }
+  return q; }
 
 Item tok(FILE *in) { Item l; int c = fgetc(in); /*printf("%i\n",c);*/ switch(c) {
   case INT: { Num n; fread(&n.x.i,sizeof(int64_t),1,in); n.type = INT; l.n = n;
@@ -32,5 +35,8 @@ Item tok(FILE *in) { Item l; int c = fgetc(in); /*printf("%i\n",c);*/ switch(c) 
   case EOF: l.type = END; break;
   default: l.c = c; l.type = OPC; } return l; }
 
-//NArr read_data(FILE *d) { Item l;
-//  while((l=tok(in)).type!=END;
+NArr read_data(FILE *d) { Item l; NArr n; int curr = 0;
+  while((l=tok(in)).type!=END) { if(l.type == OPC&&l.c == T) { n.dc = tok(in).n.x.i;
+    n.dims = malloc(n.dc*sizeof(int)); for(int i=0;i<n.dc;i++) { 
+      n.dims[i] = tok(in).n.x.i; } n.data = malloc(pi_mul(n.dims,n.dc)); }
+    if(l.type==NUM) { n.data[curr++] = l.n; } } }
