@@ -15,7 +15,7 @@
 #define E 4 // end creation of an array
 
 typedef struct { union { int64_t i; double f; } x; unsigned short type; } Num;
-typedef struct { char *name; int *dcs; } Fun;
+typedef struct { char *name; int *dcs; int *dcc; } Fun;
 typedef struct { char *name; int x; int y; } F;
 typedef struct { int dc; int *dims; Num *data; } NArr;
 typedef struct { int dc; int *dims; Fun *data; } FArr;
@@ -63,3 +63,14 @@ NArr div_b(NArr a, NArr b) { // / 0 0
   NArr c; c.dc = 1; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
   for(int i=0;i<c.dims[0];i++) { c.data[i] = Num { getf(a.data[i])/getf(b.data[i]), FLT }; }
   return c; }
+
+// return size of nth dimension.
+int sel(int a, Num n) { return n.dc-1-a; }
+
+NArr appf(NArr *ar, Fun f) { NArr cu; NArr a; NArr b;
+  // 6 5 (+"_ 0) 0 1 2 3 -> 6 5 + 0  6 5 + 1  6 5 + 2  6 5 + 3
+  // +"0 1
+  // allocate space for rank of array by allocating π(rank_a --> rank_b)
+  a.dims = malloc(pi_mul(&ar[0].dims[sel(f.dcs[0],ar[0])],f.dcs[0]+1)*sizeof(int));
+  b.dims = malloc(pi_mul(&ar[1].dims[sel(f.dcs[1],ar[1])],f.dcs[1]+1)*sizeof(int));
+  for(int i=0;
