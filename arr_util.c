@@ -40,3 +40,23 @@ NArr read_data(FILE *d) { Item l; NArr n; int curr = 0;
     n.dims = malloc(n.dc*sizeof(int)); for(int i=0;i<n.dc;i++) { 
       n.dims[i] = tok(in).n.x.i; } n.data = malloc(pi_mul(n.dims,n.dc)); }
     if(l.type==NUM) { n.data[curr++] = l.n; } } }
+
+double getf(Num q) { if(q.type==INT) { return (double)q.x.i; }
+  else { return q.x.f; } }
+
+NArr add_b(NArr a, NArr b) { // + 0 0
+  NArr c; c.dc = 1; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims[0];i++) { c.data[i] = Num { getf(a.data[i])+getf(b.data[i]), FLT }; }
+  return c; }
+NArr sub_b(NArr a, NArr b) { // - 0 0
+  NArr c; c.dc = 1; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims[0];i++) { c.data[i] = Num { getf(a.data[i])-getf(b.data[i]), FLT }; }
+  return c; }
+NArr mul_b(NArr a, NArr b) { // * 0 0
+  NArr c; c.dc = 1; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims[0];i++) { c.data[i] = Num { getf(a.data[i])*getf(b.data[i]), FLT }; }
+  return c; }
+NArr div_b(NArr a, NArr b) { // / 0 0
+  NArr c; c.dc = 1; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims[0];i++) { c.data[i] = Num { getf(a.data[i])/getf(b.data[i]), FLT }; }
+  return c; }
