@@ -16,10 +16,13 @@
 
 typedef struct { union { int64_t i; double f; } x; unsigned short type; } Num;
 typedef struct { char *name; int *dcs; } Fun;
+typedef struct { char *name; int x; int y; } F;
 typedef struct { int dc; int *dims; Num *data; } NArr;
 typedef struct { int dc; int *dims; Fun *data; } FArr;
 
 typedef struct { Fun f; Num n; char op; char type; } Item;
+
+F funs[4] = { { "add", 0, 0 }, { "sub", 0, 0 }, { "mul", 0, 0 }, { "div", 0, 0 } };
 
 int64_t pi_mul(int *dims,int dc) { int64_t q = 1; for(int i=0;i<dc;i++) { q*=dims[i]; }
   return q; }
