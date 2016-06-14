@@ -67,7 +67,7 @@ NArr div_b(NArr a, NArr b) { // / 0 0
 // returns the shape of an array with [dc]-cells
 int shp(NArr a, int dc) { return pi_mul(a.dims,a.dc-1-dc); }
 // returns amount of elements each [dc]-cell.
-int ele(NArr a, int dc) { return pi_mul(a.dims,a.dc)-shp(a,dc); }
+int ele(NArr a, int dc) { return pi_mul(a.dims,a.dc)/shp(a,dc); }
 
 // return size of nth dimension.
 int sel(int a, Num n) { return n.dc-1-a; }
