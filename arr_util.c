@@ -64,6 +64,11 @@ NArr div_b(NArr a, NArr b) { // / 0 0
   for(int i=0;i<c.dims[0];i++) { c.data[i] = Num { getf(a.data[i])/getf(b.data[i]), FLT }; }
   return c; }
 
+// returns the shape of an array with [dc]-cells
+int shp(NArr a, int dc) { return pi_mul(a.dims,a.dc-1-dc); }
+// returns amount of elements each [dc]-cell.
+int ele(NArr a, int dc) { return pi_mul(a.dims,a.dc)-shp(a,dc); }
+
 // return size of nth dimension.
 int sel(int a, Num n) { return n.dc-1-a; }
 
@@ -73,4 +78,6 @@ NArr appf(NArr *ar, Fun f) { NArr cu; NArr a; NArr b;
   // allocate space for rank of array by allocating π(rank_a --> rank_b)
   a.dims = malloc(pi_mul(&ar[0].dims[sel(f.dcs[0],ar[0])],f.dcs[0]+1)*sizeof(int));
   b.dims = malloc(pi_mul(&ar[1].dims[sel(f.dcs[1],ar[1])],f.dcs[1]+1)*sizeof(int));
-  for(int i=0;
+  for(int i=0;i<min(shp(ar[0],f.dcs[0]),shp(ar[1],f.dcs[1]));i++) {
+     // amount of calls is equal to the target shape of the smaller side.
+     
