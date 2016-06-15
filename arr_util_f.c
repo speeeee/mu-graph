@@ -17,7 +17,7 @@
 typedef struct Dim { int d; struct Dim *prev; } Dim;
 
 typedef struct { union { int64_t i; double f; } x; unsigned short type; } Num;
-typedef struct { char *name; (NArr) *f(NArr,NArr); int *dcs; int *dcc; } Fun;
+typedef struct { char *name; (NArr) *f(NArr,NArr); Dim *dc; } Fun;
 typedef struct { char *name; int x; int y; } F;
 typedef struct { Dim *boxd; Dim *dims; Num *data; } NArr;
 typedef struct { Dim *boxd; Dim *dims; Fun *data; } FArr;
@@ -46,13 +46,23 @@ Item tok(FILE *in) { Item l; int c = fgetc(in); /*printf("%i\n",c);*/ switch(c) 
 NArr read_data(FILE *d) { Item l; NArr n; n.boxd = NULL; n.dims = NULL; int curr = 0;
   while((l=tok(in)).type!=END) { if(l.type == OPC&&l.c == T) { int dc = tok(in).n.x.i;
     for(int i=0;i<dc;i++) { n.dims = pd(n.dims,tok(in).n.x.i); } 
-    n.data = malloc(pi_mul(n.dims,n.dc)); }
+    n.data = malloc(pi_mull(n.dims)); }
     if(l.type==NUM) { n.data[curr++] = l.n; } } }
 
 double getf(Num q) { if(q.type==INT) { return (double)q.x.i; }
   else { return q.x.f; } }
 Dim *fetch(Dim *x, int q) { Dim *e = x; 
   for(int i=0;i<q;i++) { e = e->prev; } return e; }
+// rank
+int sz(Dim *x) { Dim *e = x; int i; for(i=0;e;++i) { e=e->next; } return i; }
+Dim *dcopy(Dim *a, Dim *b) { Dim *e = a; while(b) { Dim *f = malloc(sizeof(Dim));
+  f->d = e->d; f->prev = a; a = f; b = b->next; } return e; }
+NArr pad(NArr a, NArr b) { if(sz(a.dims)!=sz(b.dims)) { NArr x;
+  Narr n = max(sz(a.dims),sz(b.dims)); NArr m = min(sz(a.dims),sz(b.dims)); 
+  x.dims = NULL; x.dims = dcopy(x.dims,m.dims); x.dims->d = n.dims->d;
+  x.data = malloc(pi_mull(x.dims));
+  for(int i=0;i<pi_mull(x.dims);i++) { x.data[i] = a.data[i%pi_mull(a.dims)]; }
+  return x; }
 
 NArr add_b(NArr a, NArr b) { // + 0 0
   NArr c; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
@@ -92,6 +102,6 @@ NArr appf(NArr *ar, Fun f) { NArr cu; NArr a; NArr b;
   // allocate space for rank of array by allocating π(rank_a --> rank_b)
   //a.dims = malloc(pi_mul(&ar[0].dims[sel(f.dcs[0],ar[0])],f.dcs[0]+1)*sizeof(int));
   //b.dims = malloc(pi_mul(&ar[1].dims[sel(f.dcs[1],ar[1])],f.dcs[1]+1)*sizeof(int));
-  for(int i=0;i<min(shp(ar[0],f.dcs[0]),shp(ar[1],f.dcs[1]));i++) {
+  for(int i=0;i<min(shp(ar[0],fetch(f.dcs,0)),shp(ar[1],fetch(f.dcs,1)));i++) {
      // amount of calls is equal to the target shape of the smaller side.
      
