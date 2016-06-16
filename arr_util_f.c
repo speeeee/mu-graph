@@ -47,7 +47,12 @@ NArr read_data(FILE *d) { Item l; NArr n; n.boxd = NULL; n.dims = NULL; int curr
   while((l=tok(in)).type!=END) { if(l.type == OPC&&l.c == T) { int dc = tok(in).n.x.i;
     for(int i=0;i<dc;i++) { n.dims = pd(n.dims,tok(in).n.x.i); } 
     n.data = malloc(pi_mull(n.dims)); }
-    if(l.type==NUM) { n.data[curr++] = l.n; } } }
+    if(l.type==NUM) { n.data[curr++] = l.n; } } return n; }
+
+// returns the shape of an array of [dc]-cells.
+int shp(NArr a) { return a.dims?pi_mull(a.dims):1; }
+// returns amount of elements each [dc]-cell. Amt of elements in boxed side.
+int ele(NArr a) { return a.boxd?pi_mull(a.boxd):1; }
 
 double getf(Num q) { if(q.type==INT) { return (double)q.x.i; }
   else { return q.x.f; } }
@@ -57,28 +62,33 @@ Dim *fetch(Dim *x, int q) { Dim *e = x;
 int sz(Dim *x) { Dim *e = x; int i; for(i=0;e;++i) { e=e->next; } return i; }
 Dim *dcopy(Dim *a, Dim *b) { Dim *e = a; while(b) { Dim *f = malloc(sizeof(Dim));
   f->d = e->d; f->prev = a; a = f; b = b->next; } return e; }
-NArr pad(NArr a, NArr b) { if(sz(a.dims)!=sz(b.dims)) { NArr x;
-  Narr n = max(sz(a.dims),sz(b.dims)); NArr m = min(sz(a.dims),sz(b.dims)); 
-  x.dims = NULL; x.dims = dcopy(x.dims,m.dims); x.dims->d = n.dims->d;
-  x.data = malloc(pi_mull(x.dims));
-  for(int i=0;i<pi_mull(x.dims);i++) { x.data[i] = a.data[i%pi_mull(a.dims)]; }
-  return x; }
+NArr pad(NArr a, NArr b) { int sa = shp(a.dims); int sb = shp(b.dims);
+  if(sa!=sb) { NArr x; Narr n = max(sa,sb); NArr m = min(sa,sb); 
+    x.dims = NULL; x.dims = dcopy(x.dims,m.dims); x.dims->d = n.dims->d;
+    x.data = malloc(pi_mull(x.dims));
+    for(int i=0;i<pi_mull(x.dims);i++) { x.data[i] = a.data[i%pi_mull(a.dims)]; }
+    else { NArr x = b; } return x; }
 
+// always assumes the rank of the second argument. data is cyclic.
 NArr add_b(NArr a, NArr b) { // + 0 0
-  NArr c; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
-  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { getf(a.data[i])+getf(b.data[i]), FLT }; }
+  NArr c; c.dims = b.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { 
+    getf(a.data[i%shp(a)])+getf(b.data[i%shp(b)]), FLT }; }
   return c; }
 NArr sub_b(NArr a, NArr b) { // - 0 0
-  NArr c; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
-  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { getf(a.data[i])-getf(b.data[i]), FLT }; }
+  NArr c; c.dims = b.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { 
+    getf(a.data[i%shp(a)])-getf(b.data[i%shp(b)]), FLT }; }
   return c; }
 NArr mul_b(NArr a, NArr b) { // * 0 0
-  NArr c; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
-  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { getf(a.data[i])*getf(b.data[i]), FLT }; }
+  NArr c; c.dims = b.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { 
+    getf(a.data[i%shp(a)])*getf(b.data[i%shp(b)]), FLT }; }
   return c; }
 NArr div_b(NArr a, NArr b) { // / 0 0
-  NArr c; c.dims = a.dims; c.data = malloc(c.dims[0]*sizeof(Num));
-  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num { getf(a.data[i])/getf(b.data[i]), FLT }; }
+  NArr c; c.dims = b.dims; c.data = malloc(c.dims[0]*sizeof(Num));
+  for(int i=0;i<c.dims->d;i++) { c.data[i] = Num {
+    getf(a.data[i%shp(a)])/getf(b.data[i%shp(b)]), FLT }; }
   return c; }
 // box items from b into [a]-cells.
 NArr boxr(NArr a, NArr b) { NArr c; c.dims = fetch(b.dims,a.data[0].x.i);
@@ -88,20 +98,30 @@ NArr boxr(NArr a, NArr b) { NArr c; c.dims = fetch(b.dims,a.data[0].x.i);
 F funs[4] = { { "add", add_b, 0, 0 }, { "sub", sub_b, 0, 0 }, 
   { "mul", mul_b, 0, 0 }, { "div", div_b, 0, 0 } };
 
-// returns the shape of an array of [dc]-cells.
-int shp(NArr a, int dc) { return pi_mull(a.dims); }
-// returns amount of elements each [dc]-cell. Amt of elements in boxed side.
-int ele(NArr a, int dc) { return pi_mull(a.boxd); }
-
 // return size of nth dimension.
 int sel(int a, Num n) { return n.dc-1-a; }
+// cyclic indexing.
+NArr index(NArr e, int x) { NArr r; r.dims = e.boxd;
+  r.data = malloc(ele(r)*sizeof(Num));
+  for(int i=0;i<shp(r);i++) { r.data[i] = e.data[x*shp(r)+i]; }
+  r.boxd = NULL; return r; }
 
-NArr appf(NArr *ar, Fun f) { NArr cu; NArr a; NArr b;
+NArr mk_narri(int x) { NArr a; a.data = malloc(sizeof(Num));
+  a.data[0].x.i = x; a.data[0].type = INT; a.dims = malloc(sizeof(Dim));
+  a.dims->d = 1; a.boxd = NULL; return a; }
+
+void appf_nostore_print(NArr *ar, Fun f) { NArr a; NArr b;
   // 6 5 (+"_ 0) 0 1 2 3 -> 6 5 + 0  6 5 + 1  6 5 + 2  6 5 + 3
   // +"0 1
   // allocate space for rank of array by allocating π(rank_a --> rank_b)
   //a.dims = malloc(pi_mul(&ar[0].dims[sel(f.dcs[0],ar[0])],f.dcs[0]+1)*sizeof(int));
   //b.dims = malloc(pi_mul(&ar[1].dims[sel(f.dcs[1],ar[1])],f.dcs[1]+1)*sizeof(int));
+  NArr lr = mk_narri(fetch(f.dcs,0)); NArr rr = mk_narri(fetch(f.dcs,1));
+  a = boxr(lr,ar[0]); b = boxr(rr,ar[0]); //NArr r; r.dims = b.dims;
+  //r.data = malloc(shp(r));
   for(int i=0;i<min(shp(ar[0],fetch(f.dcs,0)),shp(ar[1],fetch(f.dcs,1)));i++) {
      // amount of calls is equal to the target shape of the smaller side.
-     
+     NArr s; s.data = malloc(ele(b)*sizeof(Num)); 
+     s.data = (f.f)(index(a,i),index(b,i));
+     for(int i=0;i<shp(s)*ele(s);i++) {
+       printf("%d ", s.data[i].x.i); } printf("\n"); } }
