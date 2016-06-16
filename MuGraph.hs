@@ -1,20 +1,23 @@
-module MuGraph where
+module MuGraph (out_bc) where
 
-import qualified Data.ByteString.Lazy as B (putStr,getContents)
-import qualified Data.ByteString.Char8.Lazy as BC (pack)
+import qualified Data.ByteString.Lazy as B (ByteString(..),putStr,getContents,concat,append,writeFile)
+import qualified Data.ByteString.Lazy.Char8 as BC (pack)
 import Text.Read (readMaybe)
 import Data.Binary (encode)
+import Data.List (findIndex)
+import Data.Int (Int64(..),Int8(..))
 
-out_bc :: FilePath -> IO ()
-out_bc f = do
-  q <- B.getContents $ f ++ ".mug"
-  writeFile (f ++ ".muo") $ toBC $ words q
+out_bc :: FilePath -> String -> IO ()
+out_bc f str = do
+  B.writeFile (f ++ ".muo") (toBC $ words str)
 
-toBC :: [String] -> ByteString
-toBC = concat .
-  map (\x -> case readMaybe x :: Double of
-                 Nothing -> case findIndex (x==) f of Nothing -> BC.pack "1"++encode (-1)::Int32
-                                                      Just a  -> BC.pack "1"++encode a::Int32
-                 Just a -> case readMaybe x :: Int32 of
-                                Nothing -> BC.pack "1"++encode a::Double
-                                Just a ->  BC.pack "0"++encode a::Int32)
+toBC :: [String] -> B.ByteString
+toBC = B.concat .
+  map (\x -> case readMaybe x :: Maybe Double of
+                 Nothing -> case findIndex (x==) f of Nothing -> encode ((-1)::Int8)
+                                                      Just a  -> encode (((fromIntegral a)+3)::Int8)
+                 Just a -> case readMaybe x :: Maybe Int64 of
+                                Nothing -> B.append (encode (1::Int8)) $ encode (a::Double)
+                                Just a ->  B.append (encode (0::Int8)) $ encode (a::Int64))
+
+f = ["T","E"]
