@@ -30,7 +30,7 @@ int64_t pi_mul(int *dims,int dc) { int64_t q = 1; for(int i=0;i<dc;i++) { q*=dim
   return q; }
 int64_t pi_mull(Dim *d) { int64_t q = 1; while(d) { q*=d->d; d = d->prev; }
   return q; }
-int min(int a, int b) { return a>b?a:b; }
+int max(int a, int b) { return a>b?a:b; }
 
 Dim *pd(Dim *q, int f) { if(!q) { q = malloc(sizeof(Dim)); q->d = f; q->prev = NULL; }
   else { Dim *e = malloc(sizeof(Dim)); e->d = f; e->prev = q; q = e; } return q; }
@@ -49,20 +49,22 @@ Item tok(FILE *in) { Item l; int c = fgetc(in); /*printf("%i\n",c);*/ switch(c) 
 NArr read_data(FILE *in) { Item l; NArr n; n.boxd = NULL; n.dims = NULL; int curr = 0;
   while((l=tok(in)).type!=END) { if(l.type == OPC&&l.op == T) { int dc = tok(in).n.x.i;
     for(int i=0;i<dc;i++) { n.dims = pd(n.dims,tok(in).n.x.i); } 
-    n.data = malloc(pi_mull(n.dims)); }
+    n.data = malloc(pi_mull(n.dims)*sizeof(Num)); }
     else if(l.type==NUM) { n.data[curr++] = l.n; } } return n; }
 
-NArr nr(void) { NArr a; a.dims = NULL; a.boxd = NULL; a.data = NULL; return a; }
+NArr nr(void) { NArr a; a.dims = NULL; a.boxd = NULL; return a; }
 
 // returns the shape of an array of [dc]-cells.
-int shp(NArr a) { return a.dims?pi_mull(a.dims):1; }
+int shp(NArr a) { if(a.dims) { return pi_mull(a.dims); } else { return 1; } }
 // returns amount of elements each [dc]-cell. Amt of elements in boxed side.
-int ele(NArr a) { return a.boxd?pi_mull(a.boxd):1; }
+int ele(NArr a) { if(a.boxd) { return pi_mull(a.boxd); } else { return 1; } }
 
 double getf(Num q) { if(q.type==INT) { return (double)q.x.i; }
   else { return q.x.f; } }
 Dim *fetch(Dim *x, int q) { Dim *e = x; 
   for(int i=0;i<q;i++) { e = e->prev; } return e; }
+Dim *bget(Dim *boxd) { if(boxd) { return boxd; } else { Dim *x = malloc(sizeof(Dim));
+  x->d = 1; return x; } }
 // rank
 int sz(Dim *x) { Dim *e = x; int i; for(i=0;e;++i) { e=e->prev; } return i; }
 Dim *dcopy(Dim *a, Dim *b) { Dim *e = a; while(b) { Dim *f = malloc(sizeof(Dim));
@@ -76,6 +78,7 @@ Dim *dcopy(Dim *a, Dim *b) { Dim *e = a; while(b) { Dim *f = malloc(sizeof(Dim))
 Dim *dr(int x, int y) { Dim *a = malloc(sizeof(Dim)); a->d = y;
   Dim *b = malloc(sizeof(Dim)); b->d = x; a->prev = b; return a; }
 
+NArr self(NArr a, NArr b) { return b; }
 // always assumes the rank of the second argument. data is cyclic.
 NArr add_b(NArr a, NArr b) { // + 0 0
   NArr c = nr(); c.dims = b.dims; c.data = malloc(c.dims->d*sizeof(Num));
@@ -98,19 +101,20 @@ NArr div_b(NArr a, NArr b) { // / 0 0
     getf(a.data[i%shp(a)])/getf(b.data[i%shp(b)]), FLT }; }
   return c; }
 // box items from b into [a]-cells.
-NArr boxr(NArr a, NArr b) { NArr c = nr(); c.dims = fetch(b.dims,a.data[0].x.i);
+NArr boxr(NArr a, NArr b) { if(a.data[0].x.i) {
+  NArr c = nr(); c.dims = fetch(b.dims,a.data[0].x.i);
   c.boxd = b.dims; Dim *q = fetch(c.boxd,a.data[0].x.i-1); q->prev = NULL; 
-  c.data = b.data; return c; }
+  c.data = b.data; return c; } else { return b; } }
 
-Fun funs[4] = { { "add", add_b, NULL }, { "sub", sub_b, NULL }, 
-  { "mul", mul_b, NULL }, { "div", div_b, NULL } };
+Fun funs[5] = { { "add", add_b, NULL }, { "sub", sub_b, NULL }, 
+  { "mul", mul_b, NULL }, { "div", div_b, NULL }, { "self", self, NULL } };
 
 // return size of nth dimension.
 int sel(int a, NArr n) { return fetch(n.dims,sz(n.dims)-1-a)->d; }
 // cyclic indexing.
-NArr ind(NArr e, int x) { NArr r = nr(); r.dims = e.boxd;
+NArr ind(NArr e, int x) { NArr r = nr(); r.dims = bget(e.boxd);
   r.data = malloc(ele(r)*sizeof(Num));
-  for(int i=0;i<shp(r);i++) { r.data[i] = e.data[x*shp(r)+i]; }
+  for(int i=0;i<ele(r);i++) { r.data[i] = e.data[x*ele(r)+i]; }
   r.boxd = NULL; return r; }
 
 NArr mk_narri(int x) { NArr a = nr(); a.data = malloc(sizeof(Num));
@@ -124,14 +128,18 @@ void appf_nostore_print(NArr *ar, Fun f) { NArr a; NArr b;
   //a.dims = malloc(pi_mul(&ar[0].dims[sel(f.dcs[0],ar[0])],f.dcs[0]+1)*sizeof(int));
   //b.dims = malloc(pi_mul(&ar[1].dims[sel(f.dcs[1],ar[1])],f.dcs[1]+1)*sizeof(int));
   NArr lr = mk_narri(fetch(f.dcs,0)->d); NArr rr = mk_narri(fetch(f.dcs,1)->d);
-  a = boxr(lr,ar[0]); b = boxr(rr,ar[0]); //NArr r; r.dims = b.dims;
+  a = boxr(lr,ar[0]); b = boxr(rr,ar[1]); //NArr r; r.dims = b.dims;
   //r.data = malloc(shp(r));
-  for(int i=0;i<min(shp(ar[0]),shp(ar[1]));i++) {
+  //int m = shp(ar[1]);
+  for(int i=0;i<shp(ar[1]);i++) {
      // amount of calls is equal to the target shape of the smaller side.
      NArr s = (f.f)(ind(a,i),ind(b,i));
-     for(int i=0;i<shp(s)*ele(s);i++) {
-       printf("%lld ", s.data[i].x.i); } printf("\n"); } }
+     for(int q=0;q<shp(s)*ele(s);q++) {
+       printf("%lld ",s.data[q].x.i); } printf("\n");
+       /* result: shape is the same as b, but each unit is as large as boxd */ } }
 
-int main(int argc, char **argv) { for(int i=0;i<4;i++) { funs[i].dcs = dr(0,0); }
-  FILE *f = fopen("out.muo","rb"); NArr a = read_data(f); 
+int main(int argc, char **argv) { for(int i=0;i<5;i++) { funs[i].dcs = dr(0,0); }
+  FILE *f = fopen("out.muo","rb"); NArr a = read_data(f);
+  NArr b = mk_narri(3);
+  NArr n[2] = { b, a }; appf_nostore_print(n,funs[4]);
   return 0; }
