@@ -50,7 +50,7 @@ NArr read_data(FILE *in) { Item l; NArr n; n.boxd = NULL; n.dims = NULL; int cur
   while((l=tok(in)).type!=END) { if(l.type == OPC&&l.op == T) { int dc = tok(in).n.x.i;
     for(int i=0;i<dc;i++) { n.dims = pd(n.dims,tok(in).n.x.i); } 
     n.data = malloc(pi_mull(n.dims)); }
-    if(l.type==NUM) { n.data[curr++] = l.n; } } return n; }
+    else if(l.type==NUM) { n.data[curr++] = l.n; } } return n; }
 
 NArr nr(void) { NArr a; a.dims = NULL; a.boxd = NULL; a.data = NULL; return a; }
 
@@ -133,4 +133,5 @@ void appf_nostore_print(NArr *ar, Fun f) { NArr a; NArr b;
        printf("%lld ", s.data[i].x.i); } printf("\n"); } }
 
 int main(int argc, char **argv) { for(int i=0;i<4;i++) { funs[i].dcs = dr(0,0); }
+  FILE *f = fopen("out.muo","rb"); NArr a = read_data(f); 
   return 0; }
