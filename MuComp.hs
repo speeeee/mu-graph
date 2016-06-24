@@ -1,13 +1,14 @@
 module MuComp where
 
 data Item = NArr [Int] [Int] [Double] deriving (Show,Eq)
-data NTyp = Any | NTyp [Char] | NArray NTyp Int | Stk NTyp deriving (Show,Eq)
+data NTyp = Any | NTyp [Char] | NArray NTyp Int | Stk NTyp
+          | Fun [Char] [Int] [NTyp] [NTyp] deriving (Show,Eq)
 data Lit = Lit Item NTyp deriving (Show,Eq)
-data Fun = Fun [Char] [Int] [NTyp] [NTyp] deriving (Show,Eq)
+--data Fun = Fun [Char] [Int] [NTyp] [NTyp] deriving (Show,Eq)
 
 data Queued = D Int | I Int | Sz Int {- always 8 -} | S Int | deriving (Show,Eq)
 
-prims :: [Fun]
+prims :: [Lit]
 prims = [(Fun "|" [] [Stk Any] [NArray Any 1])]
 
 shp, ele :: [Int] -> Int
@@ -35,10 +36,13 @@ stkRed :: [NTyp] -> [NTyp] -- Fits all duplicates into 'Stk' type.  e.g. Int Int
 stkRed =
   foldr (\(x,n) -> if empty n then x:n
                    else case head n of (Stk a) -> if a == x then n else x:n
-                                       a       -> if a == x then (Stk a):rest n else x:n)
+                                       a       -> if a == x then (Stk a):rest n else x:n) []
 
 typeCheck :: [Ntyp] -> [NTyp] -> Bool
 typeCheck f s = if length f > length s then False else drop (length f - length s) f == s
+
+{-eval :: [Lit] -> [Lit]
+eval = foldl (\(x,n)-}
 
 {-appf :: [NArr] -> Fun -> NArr
 appf ns (Fun name dims) =
